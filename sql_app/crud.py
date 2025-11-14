@@ -1,11 +1,9 @@
-### sql_app/crud.py ###
+# sql_app/crud.py
 
 from sqlalchemy.orm import Session
-
 from . import models, schemas, security
 
-# --- User CRUD ---
-
+# --- User CRUD --- (No changes in this section)
 def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
@@ -30,4 +28,24 @@ def create_user_habit(db: Session, habit: schemas.HabitCreate, user_id: int):
     db.add(db_habit)
     db.commit()
     db.refresh(db_habit)
+    return db_habit
+
+def delete_habit(db: Session, habit_id: int):
+    db_habit = db.query(models.Habit).filter(models.Habit.id == habit_id).first()
+    if db_habit:
+        db.delete(db_habit)
+        db.commit()
+    return db_habit
+
+# --- ADD THIS NEW FUNCTION ---
+def update_habit(db: Session, habit_id: int, habit_update: schemas.HabitUpdate):
+    db_habit = db.query(models.Habit).filter(models.Habit.id == habit_id).first()
+    if db_habit:
+        # Get the update data as a dictionary
+        update_data = habit_update.dict(exclude_unset=True)
+        # Iterate over the provided data and update the habit object
+        for key, value in update_data.items():
+            setattr(db_habit, key, value)
+        db.commit()
+        db.refresh(db_habit)
     return db_habit

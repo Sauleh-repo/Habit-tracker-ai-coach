@@ -3,4 +3,4 @@ uvicorn[standard]
 sqlalchemy
 passlib[bcrypt]
 python-jose[cryptography]
-pydantic
+bcrypt==3.2.0

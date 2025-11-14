@@ -1,7 +1,8 @@
-### sql_app/schemas.py ###
+# sql_app/schemas.py
 
 from pydantic import BaseModel
 from typing import List, Optional
+from datetime import date
 
 # --- Habit Schemas ---
 
@@ -12,12 +13,19 @@ class HabitBase(BaseModel):
 class HabitCreate(HabitBase):
     pass
 
+# --- ADD THIS NEW SCHEMA ---
+# Defines the fields that can be updated. Both are optional.
+class HabitUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
 class Habit(HabitBase):
     id: int
     owner_id: int
+    last_completed_at: Optional[date] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --- User Schemas ---
 
@@ -32,7 +40,7 @@ class User(UserBase):
     habits: List[Habit] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --- Token Schemas ---
 

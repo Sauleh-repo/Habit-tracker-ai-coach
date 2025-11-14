@@ -1,0 +1,7 @@
+/* src/App.css */
+
+.container {
+  max-width: 720px; /* A comfortable width for content */
+  margin: 0 auto;   /* This centers the block horizontally */
+  padding: 2rem;    /* Add some space around the content */
+}

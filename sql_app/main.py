@@ -1,9 +1,10 @@
-### sql_app/main.py ###
+# sql_app/main.py
 
-from datetime import timedelta
+from datetime import timedelta, date
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -11,10 +12,23 @@ from sqlalchemy.orm import Session
 from . import crud, models, schemas, security
 from .database import SessionLocal, engine
 
-# Create all database tables
-models.Base.metadata.create_all(bind=engine)
+# This line is commented out as per our previous fix to prevent server lock-ups
+# models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+# This is the CORS middleware configuration
+origins = [
+    "http://localhost:3000",  # The origin of your React frontend
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 
 # Dependency to get a database session
 def get_db():
@@ -90,5 +104,64 @@ def read_habits(
     current_user: schemas.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    habits = crud.get_habits(db, user_id=current_user.id, skip=skip, limit=limit)
+    habits = db.query(models.Habit).filter(models.Habit.owner_id == current_user.id).offset(skip).limit(limit).all()
     return habits
+
+@app.put("/habits/{habit_id}/toggle", response_model=schemas.Habit)
+def toggle_habit_completion(
+    habit_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_user),
+):
+    db_habit = db.query(models.Habit).filter(models.Habit.id == habit_id).first()
+
+    if db_habit is None:
+        raise HTTPException(status_code=44, detail="Habit not found")
+
+    if db_habit.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this habit")
+
+    today = date.today()
+    if db_habit.last_completed_at == today:
+        db_habit.last_completed_at = None
+    else:
+        db_habit.last_completed_at = today
+
+    db.commit()
+    db.refresh(db_habit)
+    return db_habit
+
+@app.delete("/habits/{habit_id}", response_model=schemas.Habit)
+def delete_habit(
+    habit_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_user),
+):
+    db_habit = db.query(models.Habit).filter(models.Habit.id == habit_id).first()
+
+    if db_habit is None:
+        raise HTTPException(status_code=404, detail="Habit not found")
+    
+    if db_habit.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this habit")
+    
+    deleted_habit = crud.delete_habit(db=db, habit_id=habit_id)
+    return deleted_habit
+
+@app.put("/habits/{habit_id}", response_model=schemas.Habit)
+def update_habit_details(
+    habit_id: int,
+    habit_update: schemas.HabitUpdate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_user),
+):
+    db_habit = db.query(models.Habit).filter(models.Habit.id == habit_id).first()
+
+    if db_habit is None:
+        raise HTTPException(status_code=404, detail="Habit not found")
+
+    if db_habit.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this habit")
+    
+    updated_habit = crud.update_habit(db=db, habit_id=habit_id, habit_update=habit_update)
+    return updated_habit
