@@ -5,10 +5,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # Define the database URL. SQLite is used for simplicity.
-# The "./sql_app.db" path means the file will be in the same directory as this script.
 SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
 
-# Create the SQLAlchemy engine.
+# SQLAlchemy engine.
 # The 'check_same_thread' argument is needed only for SQLite.
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
