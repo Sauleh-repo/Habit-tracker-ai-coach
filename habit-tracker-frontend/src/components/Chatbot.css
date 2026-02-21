@@ -1,0 +1,35 @@
+/* src/components/Chatbot.css */
+
+.chat-window {
+  height: 250px;
+  overflow-y: auto; /* Makes the chat window scrollable if content overflows */
+  border: 1px solid var(--pico-form-element-border-color);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--pico-border-radius);
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-message {
+  max-width: 80%;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: var(--pico-border-radius);
+  word-wrap: break-word; /* Prevents long words from overflowing */
+}
+
+.chat-message.bot {
+  background-color: var(--pico-muted-background-color);
+  align-self: flex-start; /* Aligns bot messages to the left */
+}
+
+.chat-message.user {
+  background-color: var(--pico-primary-background);
+  color: var(--pico-primary-inverse);
+  align-self: flex-end; /* Aligns user messages to the right */
+}
+
+.chat-message p {
+  margin: 0;
+}

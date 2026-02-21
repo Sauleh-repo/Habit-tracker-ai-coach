@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { getHabits, toggleHabitCompletion, deleteHabit, updateHabit } from '../services/api';
 import AddHabitForm from '../components/AddHabitForm';
 import HabitItem from '../components/HabitItem';
+import Chatbot from '../components/Chatbot';
 // --- 2. IMPORT THE NEW MODAL COMPONENT ---
 import EditHabitModal from '../components/EditHabitModal';
 import './Dashboard.css';
@@ -82,6 +83,9 @@ const Dashboard = ({ token, setToken }) => {
             </header>
             <hr />
 
+            <Chatbot />
+            <hr />
+            
             <AddHabitForm onHabitAdded={handleHabitAdded} />
 
             <hr />

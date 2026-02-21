@@ -7,7 +7,10 @@ __pycache__/
 
 # --- Local Database ---
 # IMPORTANT: Never commit your development database
+# --- Local Database ---
+# IMPORTANT: Never commit your development database or vector indices
 sql_app.db
+chroma_db/
 
 # --- AWS / EB CLI ---
 # The .elasticbeanstalk folder contains environment-specific info
@@ -34,6 +37,8 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# --- SECRET CREDENTIALS (CRITICAL) ---
-# Add the exact name of your AWS credentials file
+# AWS credentials file
 Sauleh_cli_accessKeys.csv
+
+# Google API keys file
+.env

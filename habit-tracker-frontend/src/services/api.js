@@ -1,9 +1,10 @@
 // src/services/api.js
 
+
 import axios from 'axios';
 
 const apiClient = axios.create({
-    baseURL:'http://habit-tracker-prod.eba-8xdmc2ph.ap-south-1.elasticbeanstalk.com',
+    baseURL: 'http://127.0.0.1:8000', // Your live GCP Load Balancer IP
 });
 
 apiClient.interceptors.request.use(
@@ -68,4 +69,10 @@ export const deleteHabit = (habitId) => {
 // It takes the habit's ID and an object with the new name and/or description
 export const updateHabit = (habitId, { name, description }) => {
     return apiClient.put(`/habits/${habitId}`, { name, description });
+};
+
+export const analyzeHabits = () => {
+    // This makes a POST request to the new endpoint.
+    // The interceptor will automatically add the user's auth token.
+    return apiClient.post('/chatbot/analyze');
 };

@@ -25,6 +25,10 @@ habit-tracker-frontend/
 .dockerignore
 .ebignore
 
-# Local AWS credentials file (VERY IMPORTANT)
+# Local AWS credentials file
 
-Sauleh_cli_accessKeys.csv... # Or whatever the full name is
+Sauleh_cli_accessKeys.csv...
+
+# API key file
+
+.env
