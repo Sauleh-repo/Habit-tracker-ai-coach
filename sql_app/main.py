@@ -3,7 +3,7 @@ from datetime import timedelta, date
 from typing import List, Optional
 from contextlib import asynccontextmanager
 
-# NEW SDK IMPORT
+# SDK and FastAPI imports
 from google import genai
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -13,45 +13,78 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
+# Phase 2: LangChain & Vector Store
+from langchain_community.vectorstores import Chroma
+from langchain_core.embeddings import Embeddings
+
 from . import crud, models, schemas, security
 from .database import SessionLocal, engine
 
 # 1. Configuration & Global State
 load_dotenv()
 
+# --- CUSTOM EMBEDDING WRAPPER ---
+# This ensures the backend uses the exact same model and logic that ingest.py used
+class GeminiRAGEmbeddings(Embeddings):
+    def __init__(self, client):
+        self.client = client
+        # Exact string verified by your diagnostic script
+        self.model_name = "models/gemini-embedding-001"
+
+    def embed_documents(self, texts: List[str]):
+        res = self.client.models.embed_content(
+            model=self.model_name, 
+            contents=texts, 
+            config={'task_type': 'retrieval_document'}
+        )
+        return [item.values for item in res.embeddings]
+
+    def embed_query(self, text: str):
+        res = self.client.models.embed_content(
+            model=self.model_name, 
+            contents=text, 
+            config={'task_type': 'retrieval_query'}
+        )
+        return res.embeddings[0].values
+
 class AIState:
     client: Optional[genai.Client] = None
+    vector_db: Optional[Chroma] = None
 
 ai_state = AIState()
 
-# 2. Lifespan: Prevents server hang and auto-creates database tables
+# 2. Lifespan: Auto-starts the Database, AI Client, and Knowledge Base
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Create DB tables if they don't exist
     models.Base.metadata.create_all(bind=engine)
     
     api_key = os.getenv("GOOGLE_API_KEY")
     if api_key:
         try:
+            # Initialize Gemini Client (for Chat and Analysis)
             ai_state.client = genai.Client(api_key=api_key)
-            print("Gemini AI Client initialized successfully.")
+            print("Gemini AI Client (2.5 Flash) initialized.")
 
-            print("DEBUG: about to list models")
-
-            for m in ai_state.client.models.list():
-                print("MODEL FOUND:", m.name)
-
-            print("DEBUG: model listing finished")
-
-
-
+            # Load Vector Database (for Knowledge Chatbot)
+            if os.path.exists("chroma_db"):
+                custom_emb = GeminiRAGEmbeddings(ai_state.client)
+                ai_state.vector_db = Chroma(
+                    persist_directory="chroma_db", 
+                    embedding_function=custom_emb
+                )
+                print("Knowledge Base (chroma_db) loaded successfully.")
+            else:
+                print("Warning: 'chroma_db' folder not found. Conversational chat will be disabled.")
         except Exception as e:
-            print(f"Failed to initialize Gemini Client: {e}")
+            print(f"AI Initialization Error: {e}")
     else:
-        print("Warning: GOOGLE_API_KEY not found.")
-
+        print("Warning: GOOGLE_API_KEY not found in .env file.")
+    
     yield
+    # Cleanup on shutdown
     ai_state.client = None
-
+    ai_state.vector_db = None
 
 app = FastAPI(lifespan=lifespan)
 
@@ -159,10 +192,14 @@ def delete_habit(habit_id: int, db: Session = Depends(get_db), current_user: sch
         raise HTTPException(status_code=404, detail="Habit not found")
     return crud.delete_habit(db=db, habit_id=habit_id)
 
-# 7. AI Chatbot Endpoint
+# 7. AI Chatbot Endpoints
 class ChatbotResponse(BaseModel):
     reply: str
 
+class ChatRequest(BaseModel):
+    message: str
+
+# PHASE 1: Proactive Habit Coach (Uses Habit Data)
 @app.post("/chatbot/analyze", response_model=ChatbotResponse)
 async def analyze_habits(
     current_user: schemas.User = Depends(get_current_user),
@@ -171,37 +208,100 @@ async def analyze_habits(
     if not ai_state.client:
         raise HTTPException(status_code=503, detail="AI service is not configured.")
 
+    # Fetch ALL habits for the user
     habits = db.query(models.Habit).filter(models.Habit.owner_id == current_user.id).all()
+    
     if not habits:
-        return ChatbotResponse(reply="You haven't added any habits yet. Add some first!")
+        return ChatbotResponse(reply="You haven't added any habits yet! Add a few so I can give you a full review.")
 
     today = date.today()
-    habit_list_str = "\n".join([
-        f"- {h.name}: {'Completed today' if h.last_completed_at == today else 'Not completed today'}"
-        for h in habits
-    ])
-
-    prompt = f"""
-    You are a friendly wellness coach. User: {current_user.username}.
-    Current Habits Status:
-    {habit_list_str}
     
-    Based on this, please:
-    1. Praise a success.
-    2. Gently point out one growth area.
-    3. Suggest one tiny actionable step.
-    Keep the response concise (under 120 words) and in a single paragraph.
+    # 1. Create a more detailed summary for the AI
+    summary_items = []
+    for h in habits:
+        status = "COMPLETED" if h.last_completed_at == today else "PENDING"
+        summary_items.append(f"Habit: {h.name} | Description: {h.description or 'N/A'} | Status today: {status}")
+    
+    full_habit_context = "\n".join(summary_items)
+
+    print(full_habit_context)
+
+    # 2. Updated Prompt to force holistic analysis
+    prompt = f"""
+    You are a high-level wellness coach for {current_user.username}. 
+    Below is a complete list of the user's current habits and their status for today:
+    
+    {full_habit_context}
+    
+    Task:
+    1. Look at the ENTIRE list above. Do not just focus on the first item.
+    2. Provide a holistic review. Mention specific patterns you see across multiple habits.
+    3. If they have several completed, praise their overall discipline. 
+    4. If they have several pending, give a single piece of advice that helps them get started on multiple fronts.
+    5. Suggest ONE "Micro-Habit" that would complement this specific set of habits.
+    
+    Keep the response under 150 words, encouraging, and formatted as a single cohesive paragraph.
     """
 
     try:
-        # Corrected model string and call for new SDK
         response = ai_state.client.models.generate_content(
-            model="gemini-2.5-flash",  # Use the correct model name from your GCP console
+            model="gemini-2.5-flash", 
             contents=prompt,
         )
         return ChatbotResponse(reply=response.text)
     except Exception as e:
-        print(f"Gemini API Error: {e}")
+        print(f"Gemini Coach Error: {e}")
         raise HTTPException(status_code=500, detail="The AI coach is currently unavailable.")
+    
+# PHASE 2: Conversational Knowledge Assistant (Uses Text Files / RAG)
+@app.post("/chatbot/ask", response_model=ChatbotResponse)
+async def ask_chatbot(
+    request: ChatRequest, 
+    current_user: schemas.User = Depends(get_current_user),
+    db: Session = Depends(get_db) # Added database dependency
+):
+    if not ai_state.client or not ai_state.vector_db:
+        raise HTTPException(status_code=503, detail="Knowledge base not ready.")
 
+    try:
+        # 1. Fetch User's current habits for personal context
+        user_habits = db.query(models.Habit).filter(models.Habit.owner_id == current_user.id).all()
+        habit_context = "User's current tracked habits:\n"
+        if user_habits:
+            for h in user_habits:
+                habit_context += f"- {h.name}: {h.description or 'No description'}\n"
+        else:
+            habit_context += "- No habits tracked yet.\n"
 
+        # 2. Similarity Search in knowledge base for expert context
+        docs = ai_state.vector_db.similarity_search(request.message, k=3)
+        expert_context = "\n".join([doc.page_content for doc in docs])
+
+        # 3. Build the UNIFIED Prompt
+        prompt = f"""
+        You are a wellness assistant for {current_user.username}.
+        
+        {habit_context}
+        
+        Expert Knowledge Context from your files:
+        {expert_context}
+        
+        User Question: {request.message}
+        
+        Instruction: 
+        Use the 'User's current tracked habits' to personalize your answer. 
+        If they ask about their own patterns (like sleep), look at their tracked habits first.
+        Then, use the 'Expert Knowledge Context' to give them actionable advice.
+        Be encouraging and concise.
+        """
+
+        # 4. Generate Answer
+        response = ai_state.client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        return ChatbotResponse(reply=response.text)
+        
+    except Exception as e:
+        print(f"RAG Chatbot Error: {e}")
+        raise HTTPException(status_code=500, detail="The assistant is having trouble answering.")

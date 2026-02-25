@@ -1,12 +1,10 @@
-// src/services/api.js
-
-
 import axios from 'axios';
 
 const apiClient = axios.create({
-    baseURL: 'http://127.0.0.1:8000', // Your live GCP Load Balancer IP
+    baseURL: 'http://127.0.0.1:8000', 
 });
 
+// Interceptor to attach the JWT Token to every request
 apiClient.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -15,18 +13,14 @@ apiClient.interceptors.request.use(
         }
         return config;
     },
-    (error) => {
-        return Promise.reject(error);
-    }
+    (error) => Promise.reject(error)
 );
 
+// Interceptor to handle expired tokens
 apiClient.interceptors.response.use(
-    (response) => {
-        return response;
-    },
+    (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            console.log('Token expired or invalid, logging out.');
             localStorage.removeItem('token');
             window.location.reload();
         }
@@ -34,7 +28,7 @@ apiClient.interceptors.response.use(
     }
 );
 
-// --- User Functions ---
+// --- Auth Functions ---
 export const register = (username, password) => {
     return apiClient.post('/users/register', { username, password });
 };
@@ -43,9 +37,7 @@ export const login = (username, password) => {
     const formData = new URLSearchParams();
     formData.append('username', username);
     formData.append('password', password);
-    return apiClient.post('/token', formData, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
+    return apiClient.post('/token', formData);
 };
 
 // --- Habit Functions ---
@@ -53,8 +45,9 @@ export const getHabits = () => {
     return apiClient.get('/habits/');
 };
 
-export const createHabit = (name, description) => {
-    return apiClient.post('/habits/', { name, description });
+// Standardized to accept a single object: { name: "...", description: "..." }
+export const createHabit = (habitData) => {
+    return apiClient.post('/habits/', habitData);
 };
 
 export const toggleHabitCompletion = (habitId) => {
@@ -65,14 +58,16 @@ export const deleteHabit = (habitId) => {
     return apiClient.delete(`/habits/${habitId}`);
 };
 
-// --- ADD THIS NEW FUNCTION ---
-// It takes the habit's ID and an object with the new name and/or description
-export const updateHabit = (habitId, { name, description }) => {
-    return apiClient.put(`/habits/${habitId}`, { name, description });
+// Standardized to accept a single object for updates
+export const updateHabit = (habitId, habitData) => {
+    return apiClient.put(`/habits/${habitId}`, habitData);
 };
 
+// --- AI Chatbot Functions ---
 export const analyzeHabits = () => {
-    // This makes a POST request to the new endpoint.
-    // The interceptor will automatically add the user's auth token.
     return apiClient.post('/chatbot/analyze');
+};
+
+export const askChatbot = (message) => {
+    return apiClient.post('/chatbot/ask', { message });
 };

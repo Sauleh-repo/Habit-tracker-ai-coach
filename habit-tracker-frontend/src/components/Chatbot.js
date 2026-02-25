@@ -1,56 +1,87 @@
 import React, { useState } from 'react';
-import { analyzeHabits } from '../services/api';
-import './Chatbot.css'; // We will create this CSS file next
+import { analyzeHabits, askChatbot } from '../services/api';
 
 const Chatbot = () => {
-    const [messages, setMessages] = useState([
-        { sender: 'bot', text: 'Hi there! When you\'re ready, click the button below and I\'ll give you some feedback on your habits.' }
-    ]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [messages, setMessages] = useState([]);
+    const [input, setInput] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [analysis, setAnalysis] = useState('');
 
-    const handleAnalyzeClick = async () => {
-        setIsLoading(true);
-        // Add a placeholder message so the user knows something is happening
-        setMessages(prev => [...prev, { sender: 'user', text: 'Analyze my habits, please!' }]);
-
+    const handleAnalyze = async () => {
+        setLoading(true);
         try {
             const response = await analyzeHabits();
-            const botReply = response.data.reply;
-            setMessages(prev => [...prev, { sender: 'bot', text: botReply }]);
+            setAnalysis(response.data.reply);
         } catch (error) {
-            console.error('Failed to get analysis:', error);
-            const errorMessage = 'Sorry, I had trouble connecting to my brain. Please try again in a moment.';
-            setMessages(prev => [...prev, { sender: 'bot', text: errorMessage }]);
+            console.error("Analysis failed", error);
         } finally {
-            setIsLoading(false);
+            setLoading(false);
         }
     };
 
-    return (
-        <article>
-            <header>
-                <h3>Your AI Habit Coach</h3>
-            </header>
-            
-            <div className="chat-window">
-                {messages.map((msg, index) => (
-                    <div key={index} className={`chat-message ${msg.sender}`}>
-                        <p>{msg.text}</p>
-                    </div>
-                ))}
-                {isLoading && (
-                    <div className="chat-message bot">
-                        <p><i>Analyzing...</i></p>
-                    </div>
-                )}
-            </div>
+    const handleSend = async (e) => {
+        e.preventDefault();
+        if (!input.trim()) return;
 
-            <footer>
-                <button onClick={handleAnalyzeClick} disabled={isLoading} aria-busy={isLoading}>
-                    {isLoading ? 'Thinking...' : 'Analyze My Habits'}
-                </button>
-            </footer>
-        </article>
+        const userMessage = { text: input, sender: 'user' };
+        setMessages([...messages, userMessage]);
+        const currentInput = input;
+        setInput('');
+        setLoading(true);
+
+        try {
+            const response = await askChatbot(currentInput);
+            const aiMessage = { text: response.data.reply, sender: 'ai' };
+            setMessages(prev => [...prev, aiMessage]);
+        } catch (error) {
+            setMessages(prev => [...prev, { text: "Error connecting to AI.", sender: 'ai' }]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+// Inside Chatbot.js return statement
+    return (
+        <div className="chatbot-section">
+            {/* HABIT ANALYZER */}
+            <article>
+                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <strong style={{fontSize: '1.2rem'}}>🧠 AI Habit Coach</strong>
+                    <button onClick={handleAnalyze} disabled={loading} style={{margin: 0}}>
+                        {loading ? 'Analyzing...' : 'Analyze My Progress'}
+                    </button>
+                </header>
+                {analysis ? (
+                    <p className="analysis-text">{analysis}</p>
+                ) : (
+                    <p><small>Get a personalized review of your current habits.</small></p>
+                )}
+            </article>
+
+            {/* KNOWLEDGE CHATBOT */}
+            <article>
+                <header><strong>💬 Ask a Wellness Question</strong></header>
+                <div className="chat-window">
+                    {messages.length === 0 && <p style={{textAlign: 'center', opacity: 0.5, marginTop: '15%'}}>Ask about nutrition, sleep, or exercise tips...</p>}
+                    {messages.map((msg, i) => (
+                        <div key={i} className={`chat-msg ${msg.sender}`}>
+                            <small><strong>{msg.sender === 'user' ? 'You' : 'AI'}:</strong></small>
+                            <div style={{marginTop: '4px'}}>{msg.text}</div>
+                        </div>
+                    ))}
+                </div>
+                <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', marginBottom: 0 }}>
+                    <input 
+                        type="text" 
+                        placeholder="Type a question..." 
+                        value={input} 
+                        onChange={(e) => setInput(e.target.value)}
+                        style={{ marginBottom: 0 }}
+                    />
+                    <button type="submit" style={{ width: 'auto', marginBottom: 0 }}>Ask</button>
+                </form>
+            </article>
+        </div>
     );
 };
 

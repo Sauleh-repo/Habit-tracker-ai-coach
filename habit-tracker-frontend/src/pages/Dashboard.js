@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from 'react';
-// --- 1. IMPORT THE NEW updateHabit FUNCTION ---
 import { getHabits, toggleHabitCompletion, deleteHabit, updateHabit } from '../services/api';
 import AddHabitForm from '../components/AddHabitForm';
 import HabitItem from '../components/HabitItem';
 import Chatbot from '../components/Chatbot';
-// --- 2. IMPORT THE NEW MODAL COMPONENT ---
 import EditHabitModal from '../components/EditHabitModal';
 import './Dashboard.css';
 
 const Dashboard = ({ token, setToken }) => {
     const [habits, setHabits] = useState([]);
-    // --- 3. ADD NEW STATE TO MANAGE THE EDIT MODAL ---
-    // This will hold the habit object that the user wants to edit.
-    // It's `null` when the modal is closed.
     const [editingHabit, setEditingHabit] = useState(null);
 
     useEffect(() => {
@@ -26,8 +21,6 @@ const Dashboard = ({ token, setToken }) => {
                 }
             };
             fetchHabits();
-        } else {
-            setHabits([]);
         }
     }, [token]);
 
@@ -61,14 +54,11 @@ const Dashboard = ({ token, setToken }) => {
         }
     };
     
-    // --- 4. ADD THE HANDLER FOR SAVING AN EDITED HABIT ---
     const handleEditHabit = async (habitId, habitData) => {
         try {
             const response = await updateHabit(habitId, habitData);
             const updatedHabit = response.data;
-            // Update the state to reflect the changes in the UI
             setHabits(habits.map(h => (h.id === updatedHabit.id ? updatedHabit : h)));
-            // Close the modal after a successful save
             setEditingHabit(null);
         } catch (error) {
             console.error('Failed to update habit', error);
@@ -76,10 +66,10 @@ const Dashboard = ({ token, setToken }) => {
     };
 
     return (
-        <div>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="dashboard-container">
+            <header className="dashboard-header">
                 <h2>Dashboard</h2>
-                <button className="secondary" onClick={handleLogout}>Logout</button>
+                <button className="secondary outline" onClick={handleLogout}>Logout</button>
             </header>
             <hr />
 
@@ -99,7 +89,6 @@ const Dashboard = ({ token, setToken }) => {
                             habit={habit}
                             onToggle={handleToggleHabit}
                             onDelete={handleDeleteHabit}
-                            // --- 5. PASS A FUNCTION TO OPEN THE MODAL ---
                             onEdit={() => setEditingHabit(habit)}
                         />
                     ))}
@@ -108,8 +97,6 @@ const Dashboard = ({ token, setToken }) => {
                 <p>You haven't added any habits yet. Add one above to get started!</p>
             )}
 
-            {/* --- 6. RENDER THE MODAL --- */}
-            {/* The modal is always in the DOM, but it's only visible when `editingHabit` is not null */}
             <EditHabitModal
                 habit={editingHabit}
                 onSave={handleEditHabit}

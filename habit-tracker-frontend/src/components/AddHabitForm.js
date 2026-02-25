@@ -8,8 +8,9 @@ const AddHabitForm = ({ onHabitAdded }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const newHabit = await createHabit(name, description);
-            onHabitAdded(newHabit.data);
+            // We pass a SINGLE object here
+            const response = await createHabit({ name, description }); 
+            onHabitAdded(response.data);
             setName('');
             setDescription('');
         } catch (error) {
