@@ -1,40 +1,56 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast'; // Professional notifications
 import LoginPage from './pages/LoginPage';
-import Dashboard from './pages/Dashboard';
 import RegisterPage from './pages/RegisterPage';
-import './App.css';
+import Dashboard from './pages/Dashboard';
 
 function App() {
-  const [token, setToken] = useState(null);
-  const [showRegister, setShowRegister] = useState(false);
+  const [token, setToken] = useState(localStorage.getItem('token'));
 
+  // Sync token state if localStorage changes (e.g., from another tab)
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     if (storedToken) setToken(storedToken);
   }, []);
 
   return (
-    <main>
-      {!token ? (
-        showRegister ? (
-          <>
-            <RegisterPage />
-            <button className="secondary" onClick={() => setShowRegister(false)}>
-              Already have an account? Login
-            </button>
-          </>
-        ) : (
-          <>
-            <LoginPage setToken={setToken} />
-            <button className="secondary" onClick={() => setShowRegister(true)}>
-              Need an account? Register
-            </button>
-          </>
-        )
-      ) : (
-        <Dashboard token={token} setToken={setToken} />
-      )}
-    </main>
+    <Router>
+      {/* This component renders the toast notifications globally */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#333',
+            color: '#fff',
+            borderRadius: '10px',
+          },
+        }}
+      />
+
+      <div className="container">
+        <Routes>
+          {/* Login Route */}
+          <Route 
+            path="/login" 
+            element={!token ? <LoginPage setToken={setToken} /> : <Navigate to="/" />} 
+          />
+
+          {/* Register Route */}
+          <Route 
+            path="/register" 
+            element={!token ? <RegisterPage /> : <Navigate to="/" />} 
+          />
+
+          {/* Dashboard (Protected) */}
+          <Route 
+            path="/" 
+            element={token ? <Dashboard token={token} setToken={setToken} /> : <Navigate to="/login" />} 
+          />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
