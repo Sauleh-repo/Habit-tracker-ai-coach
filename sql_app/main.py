@@ -1,15 +1,13 @@
 import os
 import logging
-from datetime import timedelta, date, datetime
+from datetime import timedelta, date
 from typing import List, Optional
 from contextlib import asynccontextmanager
 
-# AI and LangChain Imports
 from google import genai
 from langchain_community.vectorstores import Chroma
 from langchain_core.embeddings import Embeddings
 
-# FastAPI and Auth Imports
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,7 +19,6 @@ from pydantic import BaseModel
 from . import crud, models, schemas, security
 from .database import SessionLocal, engine
 
-# 1. Configuration & Global State
 load_dotenv()
 
 logging.basicConfig(
@@ -30,7 +27,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# --- CUSTOM EMBEDDING WRAPPER ---
 class GeminiRAGEmbeddings(Embeddings):
     def __init__(self, client):
         self.client = client
@@ -58,7 +54,6 @@ class AIState:
 
 ai_state = AIState()
 
-# 2. Lifespan: Auto-starts the Database, AI Client, and Knowledge Base
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     models.Base.metadata.create_all(bind=engine)
@@ -66,10 +61,8 @@ async def lifespan(app: FastAPI):
     api_key = os.getenv("GOOGLE_API_KEY")
     if api_key:
         try:
-            # FIX: Removed http_options={'api_version': 'v1'} 
-            # This allows the client to find gemini-embedding-001 on the beta endpoint
             ai_state.client = genai.Client(api_key=api_key)
-            logger.info("Gemini AI Client initialized (Auto-versioning).")
+            logger.info("Gemini AI Client initialized.")
 
             if os.path.exists("chroma_db"):
                 custom_emb = GeminiRAGEmbeddings(ai_state.client)
@@ -77,9 +70,9 @@ async def lifespan(app: FastAPI):
                     persist_directory="chroma_db", 
                     embedding_function=custom_emb
                 )
-                logger.info("Knowledge Base (chroma_db) loaded successfully.")
+                logger.info("Knowledge Base loaded successfully.")
             else:
-                logger.warning("'chroma_db' folder not found.")
+                logger.warning("'chroma_db' directory not found.")
         except Exception as e:
             logger.error(f"AI Initialization Error: {e}")
     yield
@@ -88,7 +81,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# 3. CORS Configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -97,7 +89,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 4. Auth Dependencies
 def get_db():
     db = SessionLocal()
     try:
@@ -125,7 +116,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
-# 5. User Endpoints
 @app.post("/users/register", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_username(db, username=user.username)
@@ -151,7 +141,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 async def read_users_me(current_user: schemas.User = Depends(get_current_user)):
     return current_user
 
-# 6. Habit Endpoints
 @app.post("/habits/", response_model=schemas.Habit)
 def create_habit_for_user(habit: schemas.HabitCreate, current_user: schemas.User = Depends(get_current_user), db: Session = Depends(get_db)):
     return crud.create_user_habit(db=db, habit=habit, user_id=current_user.id)
@@ -186,7 +175,6 @@ def delete_habit(habit_id: int, db: Session = Depends(get_db), current_user: sch
         raise HTTPException(status_code=404, detail="Habit not found")
     return crud.delete_habit(db=db, habit_id=habit_id)
 
-# 7. AI Chatbot Endpoints
 class ChatbotResponse(BaseModel):
     reply: str
 
@@ -247,21 +235,16 @@ async def ask_chatbot(
         raise HTTPException(status_code=503, detail="AI Service initializing...")
 
     try:
-        logger.info(f"Processing query for user: {current_user.username}")
-
-        # 1. Fetch Chat Memory
         history = db.query(models.ChatMessage).filter(
             models.ChatMessage.user_id == current_user.id
         ).order_by(models.ChatMessage.timestamp.desc()).limit(6).all()
         history_str = "\n".join([f"{m.role}: {m.content}" for m in reversed(history)])
 
-        # 2. RAG Search
         expert_context = "No expert data found."
         if ai_state.vector_db:
             docs = ai_state.vector_db.similarity_search(request.message, k=2)
             expert_context = "\n".join([d.page_content for d in docs])
 
-        # 3. Personal Context
         user_habits = db.query(models.Habit).filter(models.Habit.owner_id == current_user.id).all()
         habit_ctx = "\n".join([f"- {h.name}: {h.description}" for h in user_habits])
 
@@ -277,7 +260,6 @@ async def ask_chatbot(
         response = ai_state.client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         ai_reply = response.text
 
-        # 4. Save to Memory
         db.add(models.ChatMessage(user_id=current_user.id, role="user", content=request.message))
         db.add(models.ChatMessage(user_id=current_user.id, role="model", content=ai_reply))
         db.commit()
@@ -287,3 +269,14 @@ async def ask_chatbot(
     except Exception as e:
         logger.exception("Chatbot pipeline failed")
         raise HTTPException(status_code=500, detail="Internal error occurred.")
+
+@app.get("/chatbot/history", response_model=List[schemas.ChatMessage])
+def get_chat_history(
+    current_user: schemas.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    messages = db.query(models.ChatMessage).filter(
+        models.ChatMessage.user_id == current_user.id
+    ).order_by(models.ChatMessage.timestamp.asc()).limit(20).all()
+    
+    return messages

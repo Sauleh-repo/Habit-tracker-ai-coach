@@ -9,7 +9,6 @@ body {
   padding: 2rem 0;
 }
 
-/* Keeps buttons from taking over the screen */
 button {
   width: auto;
 }

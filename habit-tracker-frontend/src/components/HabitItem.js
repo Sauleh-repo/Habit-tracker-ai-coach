@@ -1,6 +1,5 @@
 import React from 'react';
 
-// --- 1. RECEIVE THE 'onEdit' FUNCTION AS A PROP ---
 const HabitItem = ({ habit, onToggle, onDelete, onEdit }) => {
     
     const isToday = (someDate) => {
@@ -30,11 +29,9 @@ const HabitItem = ({ habit, onToggle, onDelete, onEdit }) => {
                 </label>
             </div>
             <div className="habit-actions">
-                {/* --- 2. ADD THE 'EDIT' BUTTON --- */}
-                {/* It calls the 'onEdit' function passed from the Dashboard */}
                 <button 
                     className="secondary outline"
-                    onClick={() => onEdit(habit)} // Pass the whole habit object up
+                    onClick={() => onEdit(habit)}
                 >
                     Edit
                 </button>

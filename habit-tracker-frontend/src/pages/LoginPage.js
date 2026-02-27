@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { login } from '../services/api';
+import { Link } from 'react-router-dom';
 
 const LoginPage = ({ setToken }) => {
     const [username, setUsername] = useState('');
@@ -14,20 +15,14 @@ const LoginPage = ({ setToken }) => {
             setToken(response.data.access_token);
         } catch (err) {
             setError('Login failed. Please check your credentials.');
-            console.error(err);
         }
     };
 
     return (
-        // 1. Replaced the <div> with an <article> tag.
-        //    Pico.css automatically styles this as a card.
-        <article>
-            {/* 2. Added a <header> for better semantic structure. */}
+        <article style={{ maxWidth: '400px', margin: '2rem auto' }}>
             <header>
-                <h2>Login</h2>
+                <h2 style={{ margin: 0 }}>Login</h2>
             </header>
-
-            {/* The form itself is unchanged. Pico styles the inputs and buttons automatically. */}
             <form onSubmit={handleLogin}>
                 <input
                     type="text"
@@ -45,9 +40,13 @@ const LoginPage = ({ setToken }) => {
                 />
                 <button type="submit">Login</button>
             </form>
-
-            {/* 3. (Optional but good practice) Use a Pico CSS variable for the error color. */}
-            {error && <p style={{ color: 'var(--pico-color-red-500)' }}>{error}</p>}
+            {error && <p style={{ color: 'red' }}>{error}</p>}
+            
+            <footer>
+                <p style={{ margin: 0, textAlign: 'center' }}>
+                    Don't have an account? <Link to="/register">Register here</Link>
+                </p>
+            </footer>
         </article>
     );
 };

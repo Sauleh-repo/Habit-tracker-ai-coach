@@ -13,16 +13,12 @@ const AddHabitForm = ({ onHabitAdded }) => {
 
         setLoading(true);
         try {
-            // Sends object { name, description } to the backend
             const response = await createHabit({ name, description });
             
-            // Notify the parent component (Dashboard) to update the list
             onHabitAdded(response.data);
             
-            // Professional feedback
             toast.success(`Habit "${name}" started!`);
             
-            // Clear the form
             setName('');
             setDescription('');
         } catch (error) {

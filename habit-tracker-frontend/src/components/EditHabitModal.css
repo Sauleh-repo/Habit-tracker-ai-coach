@@ -1,24 +1,21 @@
-/* src/components/EditHabitModal.css */
-
 .modal-overlay {
-  position: fixed; /* Stay in place even when scrolling */
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black background */
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000; /* Ensure it's on top of everything */
+  z-index: 1000;
 }
 
 .modal-content {
   width: 90%;
-  max-width: 500px; /* Limit the maximum width on larger screens */
+  max-width: 500px;
 }
 
-/* Style the close button (Pico provides the 'close' class) */
 .modal-content article header .close {
   position: absolute;
   top: 1rem;
@@ -27,9 +24,8 @@
   height: 2rem;
 }
 
-/* Style the footer buttons */
 .modal-content article footer {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* Two columns for the buttons */
+  grid-template-columns: 1fr 1fr;
   grid-gap: 1rem;
 }

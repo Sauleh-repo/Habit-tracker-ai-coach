@@ -6,21 +6,16 @@ __pycache__/
 *.pyd
 
 # --- Local Database ---
-# IMPORTANT: Never commit your development database
-# --- Local Database ---
-# IMPORTANT: Never commit your development database or vector indices
 sql_app.db
 chroma_db/
 
 # --- AWS / EB CLI ---
-# The .elasticbeanstalk folder contains environment-specific info
 .elasticbeanstalk/
 
 # --- GCP / gcloud CLI ---
 .gcloud/
 
 # --- Frontend / Node.js ---
-# The node_modules folder is huge and should always be ignored
 habit-tracker-frontend/node_modules/
 # The production build folder
 habit-tracker-frontend/build/

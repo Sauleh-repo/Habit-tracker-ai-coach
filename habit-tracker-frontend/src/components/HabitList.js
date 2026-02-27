@@ -9,7 +9,7 @@ useEffect(() => {
     };
 
     fetchHabits();
-}, [token]); // Re-fetch when token changes
+}, [token]);
 
 return (
     <div>

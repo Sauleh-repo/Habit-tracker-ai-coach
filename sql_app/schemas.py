@@ -1,10 +1,6 @@
-# sql_app/schemas.py
-
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import date
-
-# --- Habit Schemas ---
+from datetime import date, datetime
 
 class HabitBase(BaseModel):
     name: str
@@ -13,8 +9,6 @@ class HabitBase(BaseModel):
 class HabitCreate(HabitBase):
     pass
 
-# --- ADD THIS NEW SCHEMA ---
-# Defines the fields that can be updated. Both are optional.
 class HabitUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
@@ -26,8 +20,6 @@ class Habit(HabitBase):
 
     class Config:
         from_attributes = True
-
-# --- User Schemas ---
 
 class UserBase(BaseModel):
     username: str
@@ -42,11 +34,14 @@ class User(UserBase):
     class Config:
         from_attributes = True
 
-# --- Token Schemas ---
-
 class Token(BaseModel):
     access_token: str
     token_type: str
 
-class TokenData(BaseModel):
-    username: Optional[str] = None
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True

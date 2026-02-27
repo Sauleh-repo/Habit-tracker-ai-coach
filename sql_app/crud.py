@@ -1,9 +1,6 @@
-# sql_app/crud.py
-
 from sqlalchemy.orm import Session
 from . import models, schemas, security
 
-# --- User CRUD --- 
 def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
@@ -17,8 +14,6 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.commit()
     db.refresh(db_user)
     return db_user
-
-# --- Habit CRUD ---
 
 def get_habits(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     return db.query(models.Habit).filter(models.Habit.owner_id == user_id).offset(skip).limit(limit).all()
@@ -40,9 +35,7 @@ def delete_habit(db: Session, habit_id: int):
 def update_habit(db: Session, habit_id: int, habit_update: schemas.HabitUpdate):
     db_habit = db.query(models.Habit).filter(models.Habit.id == habit_id).first()
     if db_habit:
-        # Get the update data as a dictionary
         update_data = habit_update.dict(exclude_unset=True)
-        # Iterate over the provided data and update the habit object
         for key, value in update_data.items():
             setattr(db_habit, key, value)
         db.commit()
