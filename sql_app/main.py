@@ -116,6 +116,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
+@app.get("/")
+def health_check():
+    return {"status": "healthy", "service": "Habit Tracker API"}
+
 @app.post("/users/register", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_username(db, username=user.username)
