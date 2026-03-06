@@ -83,12 +83,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://storage.googleapis.com",
-        "http://storage.googleapis.com"
-    ],
+    allow_origins=["*"], # Try this temporarily just to see if it fixes the error
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
