@@ -1,10 +1,8 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  baseURL:
-    "http://habit-tracker-env.eba-wi6z35ti.ap-south-1.elasticbeanstalk.com",
+  baseURL: "https://api.habitt.site",
 });
-
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");

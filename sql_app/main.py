@@ -83,7 +83,14 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Try this temporarily just to see if it fixes the error
+    allow_origins=[
+        "http://localhost:3000",           # Local React development
+        "http://127.0.0.1:3000",           # Alternative local development
+        "https://habitt.site",             # Your NEW official domain
+        "https://www.habitt.site",         # Your NEW domain with WWW
+        "http://habitt.site",              # Non-secure version (just in case)
+        "https://storage.googleapis.com"   # Required for direct Google Storage access
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
